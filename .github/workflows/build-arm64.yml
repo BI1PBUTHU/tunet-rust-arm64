@@ -5,31 +5,30 @@ on:
 
 jobs:
   build-arm64:
-    runs-on: [self-hosted, linux, arm64]
-
+    runs-on: ubuntu-22.04-arm
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-    - name: Install Rust Toolchain
-      uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libssl-dev openssl
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev openssl git
 
-    - name: Clone tunet-rust Repository
-      run: |
-        git clone https://github.com/Berrysoft/tunet-rust.git
+      - name: Clone tunet-rust Repository
+        run: |
+          git clone https://github.com/Berrysoft/tunet-rust.git
 
-    - name: Build Project for ARM64
-      working-directory: tunet-rust
-      run: |
-        cargo build --release --workspace --exclude native
+      - name: Build Project for ARM64
+        working-directory: tunet-rust
+        run: |
+          cargo build --release --workspace --exclude native
 
-    - name: Upload Binary Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: tunet-arm64
-        path: tunet-rust/target/release/
+      - name: Upload Binary Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tunet-arm64
+          path: tunet-rust/target/release/
