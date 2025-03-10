@@ -5,16 +5,11 @@ on:
 
 jobs:
   build-arm64:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [arm64]
+    runs-on: [self-hosted, linux, arm64]
+
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
-
-    - name: Set up ARM64 Runner
-      uses: docker/setup-qemu-action@v3
 
     - name: Install Rust Toolchain
       uses: dtolnay/rust-toolchain@stable
