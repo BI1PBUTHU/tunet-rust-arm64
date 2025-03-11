@@ -3,7 +3,7 @@ name: Multi-Platform Build and Release
 on:
   workflow_dispatch:
     inputs:
-      platform:
+      platforms:
         description: 'Select platforms from the list or manually input (comma-separated)'
         required: true
         default: 'ubuntu-latest'
@@ -23,12 +23,16 @@ on:
           - macos-15
           - macos-14
           - macos-13
+      custom-platform:
+        description: 'Or enter a custom platform (optional)'
+        required: false
+        type: string
 
 jobs:
   build-and-release:
     strategy:
       matrix:
-        platform: ${{ fromJSON(format('["{0}"]', join(inputs.platform, '","'))) }}
+        platform: ${{ fromJSON(format('[{0}]', join(inputs.platforms, ',') | replace(' ', ''))) }}
     runs-on: ${{ matrix.platform }}
 
     steps:
