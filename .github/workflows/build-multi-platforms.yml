@@ -1,16 +1,93 @@
+name: Multi-Platform Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-all:
+        description: 'Build for all platforms? (true/false)'
+        required: true
+        default: 'false'
+        type: boolean
+      platforms:
+        description: 'Select platforms from the list or manually input (comma-separated)'
+        required: false
+        type: choice
+        options:
+          - ubuntu-latest
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - ubuntu-24.04-arm
+          - ubuntu-22.04-arm
+          - windows-latest
+          - windows-2025
+          - windows-2022
+          - windows-2019
+          - macos-latest
+          - macos-15
+          - macos-14
+          - macos-13
+      custom-platform:
+        description: 'Or enter a custom platform (optional)'
+        required: false
+        type: string
+
 jobs:
-  build:
-    runs-on: ${{ matrix.platform }}
-    strategy:
-      matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
-      fail-fast: false
+  # 1) 首先根据用户输入，确定最终的“平台矩阵”
+  build-and-release:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-platforms: ${{ steps.set-matrix.outputs.platforms }}
 
     steps:
-      - name: Checkout Repository (Your Repo)
+      - name: Set matrix platforms
+        id: set-matrix
+        shell: bash
+        run: |
+          if [[ "${{ inputs.build-all }}" == "true" ]]; then
+            echo 'platforms=["ubuntu-latest","ubuntu-24.04","ubuntu-22.04","ubuntu-20.04","ubuntu-24.04-arm","ubuntu-22.04-arm","windows-latest","windows-2025","windows-2022","windows-2019","macos-latest","macos-15","macos-14","macos-13"]' >> $GITHUB_OUTPUT
+          else
+            SELECTED_PLATFORMS="${{ inputs.platforms }}"
+            CUSTOM_PLATFORM="${{ inputs.custom-platform }}"
+            # 如果同时有下拉框选择和自定义，则拼在一起
+            PLATFORM_LIST="[$(echo "$SELECTED_PLATFORMS,$CUSTOM_PLATFORM" | sed 's/,/","/g')]"
+            echo "platforms=$PLATFORM_LIST" >> $GITHUB_OUTPUT
+
+  # 2) 基于平台矩阵进行并行构建
+  build:
+    needs: build-and-release
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(needs.build-and-release.outputs.matrix-platforms) }}
+      fail-fast: false
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout (Your Repo)
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # 如无需打Tag/推送，可不必fetch-depth: 0
+          # fetch-depth: 0
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Dependencies
+        shell: pwsh
+        run: |
+          if ('${{ matrix.platform }}' -match 'ubuntu') {
+            sudo apt-get update
+            sudo apt-get install -y build-essential pkg-config libssl-dev openssl git
+          } elseif ('${{ matrix.platform }}' -match 'windows') {
+            choco install git --force -y --no-progress
+            choco install openssl --force -y --no-progress
+            choco install vcredist2015 --force -y --no-progress
+          } elseif ('${{ matrix.platform }}' -match 'mac') {
+            brew update
+            brew install openssl pkg-config git
+          }
 
       - name: Clone tunet-rust Repository
         run: |
@@ -19,10 +96,12 @@ jobs:
       - name: Build Project
         working-directory: tunet-rust
         run: |
+          # 如果在 Windows 环境下执行shell，需要注意语法或改用pwsh
           cargo build --release --workspace --exclude native
 
+      # 将编译好的产物打包为Artifact。名称中包含platform区分。
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: build-${{ matrix.platform }}  # 在artifact名称中加上平台名称
+          name: build-${{ matrix.platform }}
           path: tunet-rust/target/release/*
