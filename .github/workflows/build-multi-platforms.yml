@@ -78,9 +78,9 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y build-essential pkg-config libssl-dev openssl git
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
-            winget install --id Git.Git -e --source winget
-            winget install --id OpenSSL.OpenSSL -e --source winget
-            winget install --id vcredist2015 -e --source winget
+            choco install git -y --no-progress
+            choco install openssl -y --no-progress
+            choco install vcredist2015 -y --no-progress
           elif [[ "${{ matrix.platform }}" == mac* ]]; then
             brew update
             brew install openssl pkg-config git
