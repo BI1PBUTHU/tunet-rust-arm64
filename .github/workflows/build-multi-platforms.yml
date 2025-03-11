@@ -4,12 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       build-all:
-        description: 'Build for all platforms?'
+        description: 'Build for all platforms? (true/false)'
         required: true
         default: 'false'
         type: boolean
       platforms:
-        description: 'Select platforms from the list (multi-select) or manually input'
+        description: 'Select platforms from the list or manually input (comma-separated)'
         required: false
         type: choice
         options:
@@ -28,7 +28,7 @@ on:
           - macos-14
           - macos-13
       custom-platform:
-        description: 'Enter a custom platform (optional)'
+        description: 'Or enter a custom platform (optional)'
         required: false
         type: string
 
@@ -41,6 +41,7 @@ jobs:
     steps:
       - name: Set matrix platforms
         id: set-matrix
+        shell: bash
         run: |
           if [[ "${{ inputs.build-all }}" == "true" ]]; then
             echo 'platforms=["ubuntu-latest","ubuntu-24.04","ubuntu-22.04","ubuntu-20.04","ubuntu-24.04-arm","ubuntu-22.04-arm","windows-latest","windows-2025","windows-2022","windows-2019","macos-latest","macos-15","macos-14","macos-13"]' >> $GITHUB_OUTPUT
@@ -67,6 +68,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Dependencies
+        shell: bash
         run: |
           if [[ "${{ matrix.platform }}" == ubuntu* ]]; then
             sudo apt-get update
@@ -76,7 +78,6 @@ jobs:
           elif [[ "${{ matrix.platform }}" == mac* ]]; then
             brew update
             brew install openssl pkg-config git
-          fi
 
       - name: Clone tunet-rust Repository
         run: |
