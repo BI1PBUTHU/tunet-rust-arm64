@@ -1,0 +1,67 @@
+name: Multi-Platform Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Select platforms from the list or manually input (comma-separated)'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - ubuntu-latest
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - ubuntu-24.04-arm
+          - ubuntu-22.04-arm
+          - windows-latest
+          - windows-2025
+          - windows-2022
+          - windows-2019
+          - macos-latest
+          - macos-15
+          - macos-14
+          - macos-13
+
+jobs:
+  build-and-release:
+    strategy:
+      matrix:
+        platform: ${{ fromJSON(format('["{0}"]', join(inputs.platform, '","'))) }}
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Dependencies
+        run: |
+          if [[ "${{ matrix.platform }}" == ubuntu* ]]; then
+            sudo apt-get update
+            sudo apt-get install -y build-essential pkg-config libssl-dev openssl git
+          elif [[ "${{ matrix.platform }}" == windows* ]]; then
+            choco install openssl pkgconfiglite git
+          elif [[ "${{ matrix.platform }}" == mac* ]]; then
+            brew update
+            brew install openssl pkg-config git
+          fi
+
+      - name: Clone tunet-rust Repository
+        run: |
+          git clone https://github.com/Berrysoft/tunet-rust.git
+
+      - name: Build Project
+        working-directory: tunet-rust
+        run: |
+          cargo build --release --workspace --exclude native
+
+      - name: Create Release and Upload Artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          files: tunet-rust/target/release/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
