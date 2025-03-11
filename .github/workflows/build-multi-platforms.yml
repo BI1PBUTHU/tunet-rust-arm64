@@ -9,20 +9,54 @@ on:
         default: 'false'
         type: boolean
       platforms:
-        description: 'Select platforms from the list or manually input (comma-separated)'
+        description: 'Select platforms from the list (multi-select) or manually input'
         required: false
-        default: 'ubuntu-latest'
-        type: string
+        type: choice
+        options:
+          - ubuntu-latest
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - ubuntu-20.04
+          - ubuntu-24.04-arm
+          - ubuntu-22.04-arm
+          - windows-latest
+          - windows-2025
+          - windows-2022
+          - windows-2019
+          - macos-latest
+          - macos-15
+          - macos-14
+          - macos-13
       custom-platform:
-        description: 'Or enter a custom platform (optional)'
+        description: 'Enter a custom platform (optional)'
         required: false
         type: string
 
 jobs:
   build-and-release:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-platforms: ${{ steps.set-matrix.outputs.platforms }}
+
+    steps:
+      - name: Set matrix platforms
+        id: set-matrix
+        run: |
+          if [[ "${{ inputs.build-all }}" == "true" ]]; then
+            echo 'platforms=["ubuntu-latest","ubuntu-24.04","ubuntu-22.04","ubuntu-20.04","ubuntu-24.04-arm","ubuntu-22.04-arm","windows-latest","windows-2025","windows-2022","windows-2019","macos-latest","macos-15","macos-14","macos-13"]' >> $GITHUB_OUTPUT
+          else
+            SELECTED_PLATFORMS="${{ inputs.platforms }}"
+            CUSTOM_PLATFORM="${{ inputs.custom-platform }}"
+            PLATFORM_LIST="[$(echo "$SELECTED_PLATFORMS,$CUSTOM_PLATFORM" | sed 's/,/","/g')]"
+            echo "platforms=$PLATFORM_LIST" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: build-and-release
     strategy:
       matrix:
-        platform: ${{ fromJSON(inputs.build-all == 'true' && '["ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04", "ubuntu-24.04-arm", "ubuntu-22.04-arm", "windows-latest", "windows-2025", "windows-2022", "windows-2019", "macos-latest", "macos-15", "macos-14", "macos-13"]' || format('["{0}"]', inputs.platforms))) }}
+        platform: ${{ fromJSON(needs.build-and-release.outputs.matrix-platforms) }}
+
     runs-on: ${{ matrix.platform }}
 
     steps:
