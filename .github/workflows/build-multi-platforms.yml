@@ -1,92 +1,16 @@
-name: Multi-Platform Build and Release
-
-on:
-  workflow_dispatch:
-    inputs:
-      build-all:
-        description: 'Build for all platforms? (true/false)'
-        required: true
-        default: 'false'
-        type: boolean
-      platforms:
-        description: 'Select platforms from the list or manually input (comma-separated)'
-        required: false
-        type: choice
-        options:
-          - ubuntu-latest
-          - ubuntu-24.04
-          - ubuntu-22.04
-          - ubuntu-20.04
-          - ubuntu-24.04-arm
-          - ubuntu-22.04-arm
-          - windows-latest
-          - windows-2025
-          - windows-2022
-          - windows-2019
-          - macos-latest
-          - macos-15
-          - macos-14
-          - macos-13
-      custom-platform:
-        description: 'Or enter a custom platform (optional)'
-        required: false
-        type: string
-      tag:
-        description: 'Tag name for release'
-        required: true
-
 jobs:
-  build-and-release:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix-platforms: ${{ steps.set-matrix.outputs.platforms }}
-
-    steps:
-      - name: Set matrix platforms
-        id: set-matrix
-        shell: bash
-        run: |
-          if [[ "${{ inputs.build-all }}" == "true" ]]; then
-            echo 'platforms=["ubuntu-latest","ubuntu-24.04","ubuntu-22.04","ubuntu-20.04","ubuntu-24.04-arm","ubuntu-22.04-arm","windows-latest","windows-2025","windows-2022","windows-2019","macos-latest","macos-15","macos-14","macos-13"]' >> $GITHUB_OUTPUT
-          else
-            SELECTED_PLATFORMS="${{ inputs.platforms }}"
-            CUSTOM_PLATFORM="${{ inputs.custom-platform }}"
-            PLATFORM_LIST="[$(echo "$SELECTED_PLATFORMS,$CUSTOM_PLATFORM" | sed 's/,/","/g')]"
-            echo "platforms=$PLATFORM_LIST" >> $GITHUB_OUTPUT
-          fi
-
   build:
-    needs: build-and-release
+    runs-on: ${{ matrix.platform }}
     strategy:
       matrix:
-        platform: ${{ fromJSON(needs.build-and-release.outputs.matrix-platforms) }}
+        platform: [ubuntu-latest, windows-latest, macos-latest]
       fail-fast: false
 
-    runs-on: ${{ matrix.platform }}
-
     steps:
-      - name: Checkout Repository
+      - name: Checkout Repository (Your Repo)
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Dependencies
-        shell: pwsh
-        run: |
-          if ('${{ matrix.platform }}' -match 'ubuntu') {
-            sudo apt-get update
-            sudo apt-get install -y build-essential pkg-config libssl-dev openssl git
-          } elseif ('${{ matrix.platform }}' -match 'windows') {
-            choco install git --force -y --no-progress
-            choco install openssl --force -y --no-progress
-            choco install vcredist2015 --force -y --no-progress
-          } elseif ('${{ matrix.platform }}' -match 'mac') {
-            brew update
-            brew install openssl pkg-config git
-          }
 
       - name: Clone tunet-rust Repository
         run: |
@@ -97,21 +21,8 @@ jobs:
         run: |
           cargo build --release --workspace --exclude native
 
-      - name: Configure Git User
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git
-
-      - name: Create Git Tag
-        run: |
-          git tag ${{ inputs.tag }}
-          git push origin ${{ inputs.tag }}
-
-      - name: Create Release and Upload Artifact
-        uses: softprops/action-gh-release@v2
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          tag_name: ${{ inputs.tag }}
-          files: tunet-rust/target/release/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: build-${{ matrix.platform }}  # 在artifact名称中加上平台名称
+          path: tunet-rust/target/release/*
