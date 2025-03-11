@@ -57,6 +57,7 @@ jobs:
     strategy:
       matrix:
         platform: ${{ fromJSON(needs.build-and-release.outputs.matrix-platforms) }}
+      fail-fast: false
 
     runs-on: ${{ matrix.platform }}
 
@@ -78,6 +79,7 @@ jobs:
           elif [[ "${{ matrix.platform }}" == mac* ]]; then
             brew update
             brew install openssl pkg-config git
+          fi
 
       - name: Clone tunet-rust Repository
         run: |
