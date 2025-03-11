@@ -3,9 +3,14 @@ name: Multi-Platform Build and Release
 on:
   workflow_dispatch:
     inputs:
+      build-all:
+        description: 'Build for all platforms? (true/false)'
+        required: true
+        default: 'false'
+        type: boolean
       platforms:
         description: 'Select platforms from the list or manually input (comma-separated)'
-        required: true
+        required: false
         default: 'ubuntu-latest'
         type: choice
         options:
@@ -32,7 +37,13 @@ jobs:
   build-and-release:
     strategy:
       matrix:
-        platform: ${{ fromJSON(format('[{0}]', join(inputs.platforms, ',') | replace(' ', ''))) }}
+        platform: ${{
+          fromJSON(
+            inputs.build-all == 'true' 
+            ? '["ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04", "ubuntu-24.04-arm", "ubuntu-22.04-arm", "windows-latest", "windows-2025", "windows-2022", "windows-2019", "macos-latest", "macos-15", "macos-14", "macos-13"]' 
+            : format('[{0}]', join(inputs.platforms, ',') | replace(' ', ''))
+          )
+        }}
     runs-on: ${{ matrix.platform }}
 
     steps:
