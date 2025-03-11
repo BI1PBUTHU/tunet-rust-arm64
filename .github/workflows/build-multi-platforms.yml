@@ -31,6 +31,9 @@ on:
         description: 'Or enter a custom platform (optional)'
         required: false
         type: string
+      tag:
+        description: 'Tag name for release'
+        required: true
 
 jobs:
   build-and-release:
@@ -75,7 +78,9 @@ jobs:
             sudo apt-get update
             sudo apt-get install -y build-essential pkg-config libssl-dev openssl git
           elif [[ "${{ matrix.platform }}" == windows* ]]; then
-            choco install openssl pkgconfiglite git
+            winget install --id Git.Git -e --source winget
+            winget install --id OpenSSL.OpenSSL -e --source winget
+            winget install --id vcredist2015 -e --source winget
           elif [[ "${{ matrix.platform }}" == mac* ]]; then
             brew update
             brew install openssl pkg-config git
@@ -90,9 +95,15 @@ jobs:
         run: |
           cargo build --release --workspace --exclude native
 
+      - name: Create Git Tag
+        run: |
+          git tag ${{ inputs.tag }}
+          git push origin ${{ inputs.tag }}
+
       - name: Create Release and Upload Artifact
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag }}
           files: tunet-rust/target/release/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
