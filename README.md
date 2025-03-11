@@ -1,1 +1,1 @@
-# tunet-rust-arm64
+# tunet-rust-multi-platforms
