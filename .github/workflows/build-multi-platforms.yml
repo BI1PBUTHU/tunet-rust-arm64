@@ -31,9 +31,11 @@ on:
         description: 'Or enter a custom platform (optional)'
         required: false
         type: string
+      tag:
+        description: 'Tag name for release'
+        required: true
 
 jobs:
-  # 1) 首先根据用户输入，确定最终的“平台矩阵”
   build-and-release:
     runs-on: ubuntu-latest
     outputs:
@@ -49,11 +51,10 @@ jobs:
           else
             SELECTED_PLATFORMS="${{ inputs.platforms }}"
             CUSTOM_PLATFORM="${{ inputs.custom-platform }}"
-            # 如果同时有下拉框选择和自定义，则拼在一起
             PLATFORM_LIST="[$(echo "$SELECTED_PLATFORMS,$CUSTOM_PLATFORM" | sed 's/,/","/g')]"
             echo "platforms=$PLATFORM_LIST" >> $GITHUB_OUTPUT
+          fi
 
-  # 2) 基于平台矩阵进行并行构建
   build:
     needs: build-and-release
     strategy:
@@ -64,12 +65,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - name: Checkout (Your Repo)
+      - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # 如无需打Tag/推送，可不必fetch-depth: 0
-          # fetch-depth: 0
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -96,12 +93,10 @@ jobs:
       - name: Build Project
         working-directory: tunet-rust
         run: |
-          # 如果在 Windows 环境下执行shell，需要注意语法或改用pwsh
           cargo build --release --workspace --exclude native
 
-      # 将编译好的产物打包为Artifact。名称中包含platform区分。
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.platform }}
+          name: tunet-build-${{ matrix.platform }}
           path: tunet-rust/target/release/*
