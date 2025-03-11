@@ -72,19 +72,19 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Dependencies
-        shell: bash
+        shell: pwsh
         run: |
-          if [[ "${{ matrix.platform }}" == ubuntu* ]]; then
+          if ('${{ matrix.platform }}' -match 'ubuntu') {
             sudo apt-get update
             sudo apt-get install -y build-essential pkg-config libssl-dev openssl git
-          elif [[ "${{ matrix.platform }}" == windows* ]]; then
-            choco install git -y --no-progress
-            choco install openssl -y --no-progress
-            choco install vcredist2015 -y --no-progress
-          elif [[ "${{ matrix.platform }}" == mac* ]]; then
+          } elseif ('${{ matrix.platform }}' -match 'windows') {
+            choco install git --force -y --no-progress
+            choco install openssl --force -y --no-progress
+            choco install vcredist2015 --force -y --no-progress
+          } elseif ('${{ matrix.platform }}' -match 'mac') {
             brew update
             brew install openssl pkg-config git
-          fi
+          }
 
       - name: Clone tunet-rust Repository
         run: |
