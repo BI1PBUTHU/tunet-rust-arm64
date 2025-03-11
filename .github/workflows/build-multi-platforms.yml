@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       build-all:
-        description: 'Build for all platforms? (true/false)'
+        description: 'Build for all platforms?'
         required: true
         default: 'false'
         type: boolean
@@ -12,22 +12,7 @@ on:
         description: 'Select platforms from the list or manually input (comma-separated)'
         required: false
         default: 'ubuntu-latest'
-        type: choice
-        options:
-          - ubuntu-latest
-          - ubuntu-24.04
-          - ubuntu-22.04
-          - ubuntu-20.04
-          - ubuntu-24.04-arm
-          - ubuntu-22.04-arm
-          - windows-latest
-          - windows-2025
-          - windows-2022
-          - windows-2019
-          - macos-latest
-          - macos-15
-          - macos-14
-          - macos-13
+        type: string
       custom-platform:
         description: 'Or enter a custom platform (optional)'
         required: false
@@ -37,13 +22,7 @@ jobs:
   build-and-release:
     strategy:
       matrix:
-        platform: ${{
-          fromJSON(
-            inputs.build-all == 'true' 
-            ? '["ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04", "ubuntu-24.04-arm", "ubuntu-22.04-arm", "windows-latest", "windows-2025", "windows-2022", "windows-2019", "macos-latest", "macos-15", "macos-14", "macos-13"]' 
-            : format('[{0}]', join(inputs.platforms, ',') | replace(' ', ''))
-          )
-        }}
+        platform: ${{ fromJSON(inputs.build-all == 'true' && '["ubuntu-latest", "ubuntu-24.04", "ubuntu-22.04", "ubuntu-20.04", "ubuntu-24.04-arm", "ubuntu-22.04-arm", "windows-latest", "windows-2025", "windows-2022", "windows-2019", "macos-latest", "macos-15", "macos-14", "macos-13"]' || format('["{0}"]', inputs.platforms))) }}
     runs-on: ${{ matrix.platform }}
 
     steps:
